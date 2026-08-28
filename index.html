@@ -118,7 +118,7 @@
   </div>
 
   <script>
-    // URL Web App Apps Script milik Anda
+    // URL Web App Google Apps Script milik Anda
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxSP5U49SV2W5HtYiFerQow1JmRaDegqV1x9HC8V6rS_xJWL77eQLld2VhrTZ2ilPryZg/exec";
 
     const questionsData = [
@@ -173,6 +173,14 @@
       });
     };
 
+    function sendData(payload) {
+      return fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      }).then(res => res.json());
+    }
+
     function processLogin() {
       const u = document.getElementById('inputUsername').value;
       const p = document.getElementById('inputPassword').value;
@@ -196,15 +204,13 @@
 
         btn.innerText = "Memverifikasi...";
 
-        fetch(APPS_SCRIPT_URL, {
-          method: "POST",
-          body: JSON.stringify({ action: "checkLogin", username: u, password: p })
-        })
-        .then(res => res.json())
+        sendData({ action: "checkLogin", username: u, password: p })
         .then(res => {
           if (res.success) {
             currentUser = res;
-            document.getElementById('dispNama').innerText = res.name;
+            if (!currentUser.username) currentUser.username = u;
+
+            document.getElementById('dispNama').innerText = res.name || u;
             document.getElementById('dispEmail').innerText = res.email || "-";
             
             document.getElementById('webcamContainer').classList.remove('hidden');
@@ -251,9 +257,11 @@
         const base64Data = canvas.toDataURL('image/jpeg', 0.5);
 
         if (triggerType === "INTERVAL") {
-          fetch(APPS_SCRIPT_URL, {
-            method: "POST",
-            body: JSON.stringify({ action: "saveSnapshot", username: currentUser.username, imageBase64: base64Data, triggerType: triggerType })
+          sendData({
+            action: "saveSnapshot",
+            username: currentUser ? currentUser.username : "",
+            imageBase64: base64Data,
+            triggerType: triggerType
           });
         }
         return base64Data;
@@ -301,16 +309,12 @@
         answers[i] = val ? val.trim() : "";
       }
 
-      fetch(APPS_SCRIPT_URL, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "submitUjian",
-          userData: currentUser,
-          answers: answers,
-          imageBase64: submitPhoto
-        })
+      sendData({
+        action: "submitUjian",
+        userData: currentUser,
+        answers: answers,
+        imageBase64: submitPhoto
       })
-      .then(res => res.json())
       .then(res => {
         if (videoStream) {
           videoStream.getTracks().forEach(track => track.stop());
